@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>🧭 Earth Explorer Quiz — Maps vs Globes!</title>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{
+    --bg1:#eaf6ff;
+    --bg2:#f3fbff;
+    --ink:#07314a;
+    --muted:#54707f;
+    --accent:#5fb3ff;
+    --btn-grad:linear-gradient(90deg,#9fd6ff,#7fc7ff);
+    --glass:rgba(255,255,255,0.85);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:linear-gradient(180deg,var(--bg1),var(--bg2));font-family:var(--font-sans);color:var(--ink)}
+  .scene{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px}
+  .wrap{width:96%;max-width:980px;margin:0 auto}
+  .card{background:var(--glass);backdrop-filter:blur(6px);border-radius:14px;padding:18px;border:1px solid rgba(255,255,255,0.6);box-shadow:0 18px 40px rgba(6,30,44,0.06)}
+  h1,h2{margin:0}
+  .btn{background:var(--btn-grad);border-radius:10px;padding:10px 16px;border:none;font-weight:800;color:#05324a;cursor:pointer}
+  .btn.secondary{background:#fff;border:1px solid rgba(7,49,74,0.04)}
+  .opt{padding:10px 14px;border-radius:999px;background:#fff;border:1px solid rgba(7,49,74,0.04);cursor:pointer;font-weight:800;min-width:120px;text-align:center}
+  .opt.selected{background:linear-gradient(90deg,#dff4ff,#bfeeff)}
+  #quiz-container,#results-container{display:none}
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="wrap">
+    <div class="card">
+      <h1>🧭 Earth Explorer Quiz — Maps vs Globes!</h1>
+      <p style="color:var(--muted)">Fill your details to begin. <strong>10 questions total.</strong></p>
+      <form id="student-info-form">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input id="name" type="text" placeholder="Full Name" required>
+          <input id="roll" type="text" placeholder="Roll No." required>
+          <input id="class" type="text" placeholder="Class" required>
+          <input id="section" type="text" placeholder="Section" required>
+        </div>
+        <div style="margin-top:12px;text-align:right">
+          <button type="submit" class="btn">Start Quiz 🧭</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="quiz-container" class="card" style="margin-top:20px">
+      <h2>📘 Quiz: Maps & Globes</h2>
+      <div id="quiz"></div>
+      <div style="margin-top:10px;text-align:right">
+        <button class="btn secondary" id="prev-btn" onclick="prevQuestion()" disabled>← Previous</button>
+        <button class="btn secondary" id="next-btn" onclick="nextQuestion()">Next →</button>
+        <button class="btn" id="submit-btn" onclick="submitQuiz()">Submit Answers 🧭</button>
+      </div>
+    </div>
+
+    <div id="results-container" class="card" style="margin-top:20px">
+      <h2>🎉 Quiz Complete!</h2>
+      <p id="student-info"></p>
+      <div id="score-text" style="font-weight:900;font-size:18px"></div>
+      <div id="answers-review" style="margin-top:10px"></div>
+      <div style="margin-top:10px">
+        <button class="btn" onclick="restartQuiz()">Try Again ↺</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  Finalized quizData: 10 simplified Grade-4 friendly questions
+  Shuffled correct answer letters (semi-balanced 'organic' pattern):
+  Distribution: A=1, B=4, C=3, D=2
+  Correct indexes (0-based) computed per question below.
+*/
+const quizData = [
+  {
+    question: "1. What shape is the Earth described as in the source?",
+    options: [
+      "A. Flat and square",
+      "B. Round and flat",
+      "C. Spherical (like a ball)",
+      "D. A triangle"
+    ],
+    correct: 2,
+    explain: "'Spherical (like a ball)' is the correct description of Earth's shape."
+  },
+  {
+    question: "2. What is a globe a model of?",
+    options: [
+      "A. A country",
+      "B. The Earth",
+      "C. An ocean",
+      "D. A continent"
+    ],
+    correct: 1,
+    explain: "A globe is a model of the entire Earth."
+  },
+  {
+    question: "3. Which item is a drawing of places on the Earth seen from above?",
+    options: [
+      "A. A map",
+      "B. A globe",
+      "C. A book",
+      "D. A ball"
+    ],
+    correct: 0,
+    explain: "A map is a flat drawing that shows places as if seen from above."
+  },
+  {
+    question: "4. A globe shows a 3D view. What view does a map show?",
+    options: [
+      "A. A square view",
+      "B. A 2D view (two-dimensional)",
+      "C. A curved view",
+      "D. A hidden view"
+    ],
+    correct: 1,
+    explain: "A map shows a 2D (two-dimensional) view of Earth's surface."
+  },
+  {
+    question: "5. Why is a globe usually not able to give very detailed information?",
+    options: [
+      "A. Globes do not show any oceans",
+      "B. Globes are hard to spin",
+      "C. The whole Earth is shown on a very small scale",
+      "D. Globes are only shown in black and white"
+    ],
+    correct: 2,
+    explain: "Because a globe shows the whole Earth at a small scale, it cannot show fine details."
+  },
+  {
+    question: "6. Which item is difficult to carry, but a map can be carried easily?",
+    options: [
+      "A. A book",
+      "B. A globe",
+      "C. A picture",
+      "D. A drawing"
+    ],
+    correct: 1,
+    explain: "A globe is bulky and harder to carry than a folded map."
+  },
+  {
+    question: "7. Which of the following is a use of maps, according to the text?",
+    options: [
+      "A. To measure the temperature of the air",
+      "B. To count the number of trees in a forest",
+      "C. To know the names of all the people in a town",
+      "D. To find out the direction and distance of a place"
+    ],
+    correct: 3,
+    explain: "Maps help find directions and distances between places."
+  },
+  {
+    question: "8. Maps can provide information about the physical features of a place, such as its:",
+    options: [
+      "A. Government leader",
+      "B. History",
+      "C. Climate",
+      "D. Food"
+    ],
+    correct: 2,
+    explain: "Maps can show physical features and related information such as climate."
+  },
+  {
+    question: "9. Maps are useful because they can show the whole world, or they can show just a small part, like:",
+    options: [
+      "A. A small planet",
+      "B. One town or village",
+      "C. The sun",
+      "D. The sky"
+    ],
+    correct: 1,
+    explain: "Maps can focus on small areas such as a single town or village."
+  },
+  {
+    question: "10. Places look different on a map compared to a globe because the map is like the surface of the Earth being:",
+    options: [
+      "A. Folded into a sphere",
+      "B. Made into a cube",
+      "C. Covered in sand",
+      "D. 'Peeled' from the globe"
+    ],
+    correct: 3,
+    explain: "A flat map is like the globe's surface being 'peeled' and laid flat, which changes shapes."
+  }
+];
+
+let answers = new Array(quizData.length).fill(null);
+let currentIndex = 0;
+let student = {};
+
+document.getElementById('student-info-form').addEventListener('submit', e=>{
+  e.preventDefault();
+  student.name=document.getElementById('name').value.trim() || 'Student';
+  student.roll=document.getElementById('roll').value.trim() || '';
+  student.class=document.getElementById('class').value.trim() || '';
+  student.section=document.getElementById('section').value.trim() || '';
+  document.getElementById('student-info-form').parentElement.style.display='none';
+  document.getElementById('quiz-container').style.display='block';
+  renderQuiz();
+});
+
+function renderQuiz(){
+  const quizDiv=document.getElementById('quiz');
+  quizDiv.innerHTML='';
+  quizData.forEach((q,i)=>{
+    const div=document.createElement('div');
+    div.className='q-card'; div.dataset.index=i; div.style.display='none';
+    // simplified question text already provided
+    div.innerHTML=`<p><strong>${q.question}</strong></p>`;
+    const opts=document.createElement('div');
+    opts.style.display='flex'; opts.style.flexWrap='wrap'; opts.style.gap='8px';
+    q.options.forEach((opt,idx)=>{
+      const o=document.createElement('div');
+      o.className='opt'; o.innerHTML=opt; o.dataset.opt=idx;
+      o.onclick=()=>selectOption(i,idx,o);
+      opts.appendChild(o);
+    });
+    div.appendChild(opts); quizDiv.appendChild(div);
+  });
+  showQuestion(0);
+}
+
+function selectOption(qIndex,optIndex,elem){
+  answers[qIndex]=optIndex;
+  const qCard=document.querySelector(`.q-card[data-index="${qIndex}"]`);
+  qCard.querySelectorAll('.opt').forEach(o=>o.classList.remove('selected'));
+  elem.classList.add('selected');
+}
+
+function showQuestion(i){
+  document.querySelectorAll('.q-card').forEach((c,idx)=>c.style.display=(idx===i)?'block':'none');
+  currentIndex=i;
+  document.getElementById('prev-btn').disabled=(i===0);
+  document.getElementById('next-btn').disabled=(i===quizData.length-1);
+}
+
+function prevQuestion(){ if(currentIndex>0) showQuestion(currentIndex-1); }
+function nextQuestion(){ if(currentIndex<quizData.length-1) showQuestion(currentIndex+1); }
+
+function submitQuiz(){
+  let score=0;
+  let review='<ol>';
+  quizData.forEach((q,i)=>{
+    const user=answers[i];
+    const correct=q.correct;
+    const correctText=q.options[correct];
+    const userText=user===null?'<em>Not answered</em>':q.options[user];
+    const isCorrect=user===correct;
+    if(isCorrect) score++;
+    review+=`<li><strong>${q.question}</strong><br>Your answer: ${userText} — ${isCorrect?'<span style="color:green">Correct</span>':'<span style="color:red">Wrong</span>'}<br><em>Correct:</em> ${correctText}<br><small>${q.explain}</small></li><br>`;
+  });
+  review+='</ol>';
+  document.getElementById('quiz-container').style.display='none';
+  document.getElementById('results-container').style.display='block';
+  document.getElementById('student-info').textContent=`${student.name} — Roll ${student.roll} — Class ${student.class} — Section ${student.section}`;
+  document.getElementById('score-text').textContent=`Final Score: ${score} / ${quizData.length}`;
+  document.getElementById('answers-review').innerHTML=review;
+
+  // Trigger PDF download automatically
+  setTimeout(()=>downloadPDF(student.name,score),800);
+}
+
+function downloadPDF(name,score){
+  const resultElement=document.getElementById('results-container').cloneNode(true);
+  resultElement.style.background="#fff";
+  resultElement.style.color="#000";
+  const safeName = (name || 'Student').replace(/\s+/g,'_');
+  const opt={
+    margin:0.5,
+    filename:`${safeName}_Maps_Globes_Score.pdf`,
+    image:{type:'jpeg',quality:0.98},
+    html2canvas:{scale:2},
+    jsPDF:{unit:'in',format:'a4',orientation:'portrait'}
+  };
+  html2pdf().from(resultElement).set(opt).save();
+}
+
+function restartQuiz(){
+  answers.fill(null);
+  currentIndex=0;
+  document.getElementById('results-container').style.display='none';
+  document.getElementById('student-info-form').parentElement.style.display='block';
+}
+</script>
+</body>
+</html>
